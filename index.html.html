@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>특수교육대상자 월별 통학비 정산 관리기</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background-color: #fff !important;
+        color: #000 !important;
+        padding: 0 !important;
+      }
+      .print-shadow-none {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      .print-table th, .print-table td {
+        border: 1px solid #94a3b8 !important;
+        padding: 6px 8px !important;
+        font-size: 11px !important;
+      }
+      .print-table th {
+        background-color: #f1f5f9 !important;
+      }
+      .page-break {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="bg-indigo-700 text-white shadow-md no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-indigo-600 rounded-lg shadow-inner">
+          <i data-lucide="bus" class="w-6 h-6 text-indigo-100"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">특수교육대상자 월별 통학비 정산 시스템</h1>
+        </div>
+      </div>
+      <!-- 헤더 우측 작업 버튼 -->
+      <div class="flex items-center gap-2">
+        <button onclick="window.print()" class="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg shadow transition">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>인쇄 / PDF 출력</span>
+        </button>
+        <button onclick="exportToCSV()" class="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg shadow transition">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          <span>엑셀(CSV) 다운로드</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 인쇄 전용 헤더 -->
+  <div class="hidden print:block p-4 mb-2 text-center border-b border-slate-300">
+    <h1 class="text-2xl font-bold text-slate-900 tracking-wide" id="printTitle">2026년 11월 특수교육대상자 통학비 정산서</h1>
+    <p class="text-xs text-slate-600 mt-1" id="printSubtitle">작성일자: <span id="printDate"></span> | 기준: 실 등교일수 및 개별 통학단가</p>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- 1. 정산 기준월 및 공통 단가 설정 패널 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 no-print">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="calendar-cog" class="w-5 h-5 text-indigo-600"></i>
+          <h2 class="text-base font-bold text-slate-900">정산 기준월 및 공통 단가 설정</h2>
+        </div>
+        <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+          💾 월별 데이터 자동 저장 활성화됨
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+        <!-- 연도/월 선택 -->
+        <div class="lg:col-span-3">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">정산 대상 연월</label>
+          <div class="flex gap-2">
+            <select id="selectYear" onchange="onMonthChange()" class="w-1/2 px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </select>
+            <select id="selectMonth" onchange="onMonthChange()" class="w-1/2 px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </select>
+          </div>
+        </div>
+
+        <!-- 학생 & 보호자 기본 1일 단가 (항상 한 줄에 나란히 배치) -->
+        <div class="lg:col-span-6 grid grid-cols-2 gap-3 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
+          <div>
+            <label class="block text-xs font-bold text-teal-800 mb-1 flex items-center gap-1">
+              <i data-lucide="graduation-cap" class="w-3.5 h-3.5 text-teal-600"></i>
+              <span>학생 기본 1일 단가</span>
+            </label>
+            <div class="relative">
+              <input type="number" id="defaultStudentFare" value="1500" min="0" step="50" onchange="updateDefaultFares()"
+                     class="w-full px-3 py-1.5 pr-7 border border-teal-300 rounded-lg text-sm font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <span class="absolute right-2.5 top-2 text-xs text-slate-400">원</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-purple-800 mb-1 flex items-center gap-1">
+              <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-purple-600"></i>
+              <span>보호자 기본 1일 단가</span>
+            </label>
+            <div class="relative">
+              <input type="number" id="defaultParentFare" value="1500" min="0" step="50" onchange="updateDefaultFares()"
+                     class="w-full px-3 py-1.5 pr-7 border border-purple-300 rounded-lg text-sm font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+              <span class="absolute right-2.5 top-2 text-xs text-slate-400">원</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 전체 일괄 적용 버튼 -->
+        <div class="lg:col-span-3">
+          <button onclick="applyDefaultsToAll()" class="w-full py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-600"></i>
+            <span>모든 학생에게 기본단가 적용</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 종합 집계 요약 대시보드 카드 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-500">대상 학생 수</span>
+          <span class="p-1.5 bg-blue-50 text-blue-600 rounded-md"><i data-lucide="users" class="w-4 h-4"></i></span>
+        </div>
+        <p class="text-2xl font-bold text-slate-900 mt-2"><span id="summaryStudentCount">0</span><span class="text-xs font-normal text-slate-500 ml-1">명</span></p>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-500">학생 지원 총액</span>
+          <span class="p-1.5 bg-teal-50 text-teal-600 rounded-md"><i data-lucide="graduation-cap" class="w-4 h-4"></i></span>
+        </div>
+        <p class="text-2xl font-bold text-teal-700 mt-2"><span id="summaryStudentFare">0</span><span class="text-xs font-normal text-slate-500 ml-1">원</span></p>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-500">보호자 지원 총액</span>
+          <span class="p-1.5 bg-purple-50 text-purple-600 rounded-md"><i data-lucide="heart-handshake" class="w-4 h-4"></i></span>
+        </div>
+        <p class="text-2xl font-bold text-purple-700 mt-2"><span id="summaryParentFare">0</span><span class="text-xs font-normal text-slate-500 ml-1">원</span></p>
+      </div>
+
+      <div class="col-span-2 md:col-span-1 bg-gradient-to-br from-indigo-700 to-indigo-800 text-white p-4 rounded-xl shadow-md border border-indigo-600">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-indigo-200">총 지급 총액</span>
+          <span class="p-1.5 bg-indigo-600 text-white rounded-md"><i data-lucide="wallet" class="w-4 h-4"></i></span>
+        </div>
+        <p class="text-2xl font-black text-amber-300 mt-2"><span id="summaryGrandTotal">0</span><span class="text-xs font-normal text-indigo-200 ml-1">원</span></p>
+      </div>
+    </div>
+
+    <!-- 3. 학생 통학비 정산 명부 테이블 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <!-- 테이블 컨트롤 바 -->
+      <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-800 text-sm" id="tableTitleMonth">2026년 11월 통학비 정산 명부</span>
+          <span class="text-xs text-slate-500">(단위: 원)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="addNewRow()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+            <span>학생 추가</span>
+          </button>
+          <button onclick="resetCurrentMonthData()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg text-xs font-medium transition flex items-center gap-1">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>당월 초기화</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 데이터 테이블 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse print-table">
+          <thead class="bg-slate-100 text-slate-700 font-semibold uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th scope="col" class="py-3 px-2 text-center w-10">No</th>
+              <th scope="col" class="py-3 px-2 text-left min-w-[90px]">학생명</th>
+              <th scope="col" class="py-3 px-2 text-left min-w-[80px]">학반</th>
+              <th scope="col" class="py-3 px-2 text-center min-w-[70px]">보호자동행</th>
+              <th scope="col" class="py-3 px-2 text-center min-w-[80px]">등교일수</th>
+              <th scope="col" class="py-3 px-2 text-right min-w-[110px] bg-slate-50">학생 통학비</th>
+              <th scope="col" class="py-3 px-2 text-right min-w-[110px] bg-slate-50">보호자 통학비</th>
+              <th scope="col" class="py-3 px-2 text-right min-w-[120px] bg-indigo-50/60 font-bold text-indigo-950">개별 합계액</th>
+              <th scope="col" class="py-3 px-2 text-center w-12 no-print">삭제</th>
+            </tr>
+          </thead>
+          <tbody id="studentTableBody" class="divide-y divide-slate-200 font-normal">
+            <!-- 동적 렌더링 -->
+          </tbody>
+          <tfoot class="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300">
+            <tr>
+              <td colspan="5" class="py-3 px-2 text-center">합 계 (전체)</td>
+              <td class="py-3 px-2 text-right text-teal-700" id="footStudentTotal">0원</td>
+              <td class="py-3 px-2 text-right text-purple-700" id="footParentTotal">0원</td>
+              <td class="py-3 px-2 text-right text-indigo-700 text-sm font-extrabold bg-indigo-100/60" id="footGrandTotal">0원</td>
+              <td class="py-3 px-2 text-center no-print">-</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4. 정산 규정 및 행정 서명란 (인쇄 시 표시) -->
+    <div class="hidden print:block mt-8 pt-4 border-t border-slate-300">
+      <div class="grid grid-cols-2 text-xs text-slate-700">
+        <div>
+          <p class="font-bold mb-1">■ 정산 산출 기준</p>
+          <ul class="list-disc list-inside space-y-0.5 text-slate-600">
+            <li>학생 통학비 산출식: 등교일수 × 학생 기본 1일 단가 × 2회</li>
+            <li>보호자 통학비 산출식: 등교일수 × 보호자 기본 1일 단가 × 4회 (동행 시)</li>
+            <li>실제 출석·등교일수를 기초로 산출하였으며 방학, 결석일은 제외됨.</li>
+          </ul>
+        </div>
+        <div class="flex justify-end items-end space-x-8">
+          <div class="text-center">
+            <span class="block text-slate-500 mb-6">담당교사</span>
+            <span class="border-b border-black px-6 py-0.5">(인/서명)</span>
+          </div>
+          <div class="text-center">
+            <span class="block text-slate-500 mb-6">특수부장 / 행정실장</span>
+            <span class="border-b border-black px-6 py-0.5">(인/서명)</span>
+          </div>
+          <div class="text-center">
+            <span class="block text-slate-500 mb-6">학교장</span>
+            <span class="border-b border-black px-6 py-0.5">(인/서명)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 편의 가이드 배너 -->
+    <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 flex items-start gap-3 text-xs text-indigo-900 no-print">
+      <i data-lucide="info" class="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+      <div class="space-y-1">
+        <p class="font-semibold text-indigo-950">선생님을 위한 행정 팁</p>
+        <p class="text-indigo-800 leading-relaxed">
+          • <strong>산출 공식:</strong> 학생 통학비 = <code>등교일수 × 학생 기본 단가 × 2</code> / 보호자 통학비 = <code>등교일수 × 보호자 기본 단가 × 4</code>로 자동 계산됩니다.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 심플 푸터 -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 no-print">
+    특수교육대상자 통학비 원스톱 정산 도구 | 모든 데이터는 사용자 기기 브라우저에 안전하게 저장됩니다.
+  </footer>
+
+  <!-- 알림 메시지 모달/토스트 (Alert 대체) -->
+  <div id="toastMessage" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-medium transform transition-all duration-300 opacity-0 pointer-events-none flex items-center gap-2 z-50">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastText">처리되었습니다.</span>
+  </div>
+
+  <!-- 당월 초기화 확인 모달 (Confirm 대체) -->
+  <div id="resetModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4 no-print">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center gap-3 text-rose-600">
+        <div class="p-2 bg-rose-50 rounded-full">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-900">당월 데이터 초기화</h3>
+      </div>
+      <p id="resetModalDesc" class="text-xs text-slate-600 leading-relaxed">
+        선택된 월의 정산 명단 데이터를 초기 예시 상태로 리셋하시겠습니까?
+      </p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeResetModal()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">
+          취소
+        </button>
+        <button onclick="confirmResetMonthData()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+          초기화 실행
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 현재 날짜 기준 초기화
+    const now = new Date();
+    let currentYear = now.getFullYear();
+    let currentMonth = now.getMonth() + 1;
+
+    // 기본 초기 데이터셋 (신규 월 진입 시 제공되는 예시)
+    const initialSampleStudents = [
+      { id: 1, name: "김하늘", grade: "초 2-1", hasParent: true, days: 20, sFare: 1500, pFare: 1500 },
+      { id: 2, name: "이지호", grade: "초 4-2", hasParent: false, days: 19, sFare: 1500, pFare: 1500 },
+      { id: 3, name: "박민수", grade: "초 6-1", hasParent: true, days: 21, sFare: 1500, pFare: 1500 }
+    ];
+
+    let currentStudents = [];
+
+    // 실행 초기화
+    window.onload = function() {
+      initYearMonthSelectors();
+      loadMonthData();
+      lucide.createIcons();
+      updatePrintDate();
+    };
+
+    // 연도 및 월 셀렉트 박스 생성 (과거 2년 ~ 미래 2년)
+    function initYearMonthSelectors() {
+      const yearSelect = document.getElementById('selectYear');
+      const monthSelect = document.getElementById('selectMonth');
+
+      yearSelect.innerHTML = '';
+      for (let y = currentYear - 2; y <= currentYear + 2; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = `${y}년`;
+        if (y === currentYear) opt.selected = true;
+        yearSelect.appendChild(opt);
+      }
+
+      monthSelect.innerHTML = '';
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = `${m}월`;
+        if (m === currentMonth) opt.selected = true;
+        monthSelect.appendChild(opt);
+      }
+    }
+
+    // 로컬 스토리지 키 생성
+    function getStorageKey(y, m) {
+      return `special_commute_data_${y}_${m}`;
+    }
+
+    // 월 변경 이벤트
+    function onMonthChange() {
+      currentYear = parseInt(document.getElementById('selectYear').value);
+      currentMonth = parseInt(document.getElementById('selectMonth').value);
+      loadMonthData();
+      showToast(`${currentYear}년 ${currentMonth}월 데이터를 불러왔습니다.`);
+    }
+
+    // 데이터 로드
+    function loadMonthData() {
+      const key = getStorageKey(currentYear, currentMonth);
+      const saved = localStorage.getItem(key);
+
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          currentStudents = parsed.students || [];
+          if (parsed.defaultSFare) document.getElementById('defaultStudentFare').value = parsed.defaultSFare;
+          if (parsed.defaultPFare) document.getElementById('defaultParentFare').value = parsed.defaultPFare;
+        } catch (e) {
+          currentStudents = JSON.parse(JSON.stringify(initialSampleStudents));
+        }
+      } else {
+        // 데이터가 없는 월이면 기본 샘플 복사
+        currentStudents = JSON.parse(JSON.stringify(initialSampleStudents));
+        // 기본단가 동기화
+        const defS = parseInt(document.getElementById('defaultStudentFare').value) || 1500;
+        const defP = parseInt(document.getElementById('defaultParentFare').value) || 1500;
+        currentStudents.forEach(s => {
+          s.sFare = defS;
+          s.pFare = defP;
+        });
+      }
+
+      updateUI();
+    }
+
+    // 데이터 저장
+    function saveMonthData() {
+      const key = getStorageKey(currentYear, currentMonth);
+      const dataToSave = {
+        defaultSFare: parseInt(document.getElementById('defaultStudentFare').value) || 0,
+        defaultPFare: parseInt(document.getElementById('defaultParentFare').value) || 0,
+        students: currentStudents
+      };
+      localStorage.setItem(key, JSON.stringify(dataToSave));
+    }
+
+    // 기본 단가 변경 반영
+    function updateDefaultFares() {
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
+      currentStudents.forEach(st => {
+        st.sFare = defS;
+        st.pFare = defP;
+      });
+      renderTable();
+      calculateTotals();
+      saveMonthData();
+      showToast('공통 1일 기준 단가가 반영되었습니다.');
+    }
+
+    // 기본 단가를 모든 학생에게 재적용
+    function applyDefaultsToAll() {
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
+
+      currentStudents.forEach(st => {
+        st.sFare = defS;
+        st.pFare = defP;
+      });
+
+      renderTable();
+      calculateTotals();
+      saveMonthData();
+      showToast('모든 학생에게 공통 단가가 적용되었습니다.');
+    }
+
+    // 학생 새 행 추가
+    function addNewRow() {
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 1500;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 1500;
+
+      const newId = currentStudents.length > 0 ? Math.max(...currentStudents.map(s => s.id || 0)) + 1 : 1;
+      currentStudents.push({
+        id: newId,
+        name: "",
+        grade: "",
+        hasParent: true,
+        days: 20,
+        sFare: defS,
+        pFare: defP
+      });
+
+      renderTable();
+      calculateTotals();
+      saveMonthData();
+      showToast('새 학생 행이 추가되었습니다.');
+    }
+
+    // 학생 삭제
+    function removeStudent(index) {
+      currentStudents.splice(index, 1);
+      renderTable();
+      calculateTotals();
+      saveMonthData();
+      showToast('학생 항목이 삭제되었습니다.');
+    }
+
+    // 입력값 변경 반영 (인라인 이벤트)
+    function onFieldChange(index, field, value) {
+      if (field === 'hasParent') {
+        currentStudents[index][field] = Boolean(value);
+      } else if (field === 'days' || field === 'sFare' || field === 'pFare') {
+        currentStudents[index][field] = Math.max(0, parseInt(value) || 0);
+      } else {
+        currentStudents[index][field] = value;
+      }
+
+      updateRowCalculations(index);
+      calculateTotals();
+      saveMonthData();
+    }
+
+    // 행 단위 금액 계산 업데이트 (DOM 직접 갱신으로 타자 지연 방지)
+    function updateRowCalculations(idx) {
+      const s = currentStudents[idx];
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
+      const sTotal = (s.days || 0) * defS * 2;
+      const pTotal = s.hasParent ? ((s.days || 0) * defP * 4) : 0;
+      const rowSum = sTotal + pTotal;
+
+      const sElem = document.getElementById(`sTotal_${idx}`);
+      const pElem = document.getElementById(`pTotal_${idx}`);
+      const sumElem = document.getElementById(`sumTotal_${idx}`);
+
+      if (sElem) sElem.textContent = sTotal.toLocaleString() + '원';
+      if (pElem) {
+        pElem.textContent = pTotal.toLocaleString() + '원';
+        if (!s.hasParent) {
+          pElem.className = 'py-2 px-2 text-right text-slate-400 italic bg-slate-50';
+        } else {
+          pElem.className = 'py-2 px-2 text-right font-medium text-purple-700 bg-slate-50';
+        }
+      }
+      if (sumElem) sumElem.textContent = rowSum.toLocaleString() + '원';
+    }
+
+    // 전체 테이블 렌더링
+    function renderTable() {
+      const tbody = document.getElementById('studentTableBody');
+      tbody.innerHTML = '';
+
+      if (currentStudents.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="py-10 text-center text-slate-400">
+              등록된 학생이 없습니다. [학생 추가] 버튼을 눌러 정산 명단을 작성하세요.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
+
+      currentStudents.forEach((st, idx) => {
+        const sTotal = (st.days || 0) * defS * 2;
+        const pTotal = st.hasParent ? ((st.days || 0) * defP * 4) : 0;
+        const total = sTotal + pTotal;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-150";
+
+        tr.innerHTML = `
+          <td class="py-2 px-2 text-center text-slate-400 font-mono">${idx + 1}</td>
+          <td class="py-2 px-2">
+            <input type="text" value="${escapeHtml(st.name)}" placeholder="학생명"
+                   oninput="onFieldChange(${idx}, 'name', this.value)"
+                   class="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded bg-transparent focus:bg-white text-xs font-semibold focus:outline-none">
+          </td>
+          <td class="py-2 px-2">
+            <input type="text" value="${escapeHtml(st.grade)}" placeholder="학반"
+                   oninput="onFieldChange(${idx}, 'grade', this.value)"
+                   class="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded bg-transparent focus:bg-white text-xs text-slate-600 focus:outline-none">
+          </td>
+          <td class="py-2 px-2 text-center">
+            <input type="checkbox" ${st.hasParent ? 'checked' : ''}
+                   onchange="onFieldChange(${idx}, 'hasParent', this.checked); renderTable();"
+                   class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
+          </td>
+          <td class="py-2 px-2 text-center">
+            <input type="number" min="0" max="31" value="${st.days}"
+                   oninput="onFieldChange(${idx}, 'days', this.value)"
+                   class="w-16 px-2 py-1 text-center font-bold border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded bg-slate-50 focus:bg-white text-xs focus:outline-none">
+          </td>
+          <td id="sTotal_${idx}" class="py-2 px-2 text-right font-medium text-teal-700 bg-slate-50">
+            ${sTotal.toLocaleString()}원
+          </td>
+          <td id="pTotal_${idx}" class="py-2 px-2 text-right font-medium ${st.hasParent ? 'text-purple-700' : 'text-slate-400 italic'} bg-slate-50">
+            ${pTotal.toLocaleString()}원
+          </td>
+          <td id="sumTotal_${idx}" class="py-2 px-2 text-right font-bold text-indigo-900 bg-indigo-50/50">
+            ${total.toLocaleString()}원
+          </td>
+          <td class="py-2 px-2 text-center no-print">
+            <button onclick="removeStudent(${idx})" title="삭제" class="p-1 text-slate-400 hover:text-rose-600 transition">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    // 전체 합산 계산 및 대시보드 갱신
+    function calculateTotals() {
+      let count = currentStudents.length;
+      let totalStudentFare = 0;
+      let totalParentFare = 0;
+
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
+
+      currentStudents.forEach(st => {
+        const days = parseInt(st.days) || 0;
+
+        totalStudentFare += (days * defS * 2);
+        if (st.hasParent) {
+          totalParentFare += (days * defP * 4);
+        }
+      });
+
+      const grandTotal = totalStudentFare + totalParentFare;
+
+      // 대시보드 카드 반영
+      document.getElementById('summaryStudentCount').textContent = count.toLocaleString();
+      document.getElementById('summaryStudentFare').textContent = totalStudentFare.toLocaleString();
+      document.getElementById('summaryParentFare').textContent = totalParentFare.toLocaleString();
+      document.getElementById('summaryGrandTotal').textContent = grandTotal.toLocaleString();
+
+      // 표 하단 합계행 반영
+      document.getElementById('footStudentTotal').textContent = `${totalStudentFare.toLocaleString()}원`;
+      document.getElementById('footParentTotal').textContent = `${totalParentFare.toLocaleString()}원`;
+      document.getElementById('footGrandTotal').textContent = `${grandTotal.toLocaleString()}원`;
+    }
+
+    // UI 일괄 갱신 (헤더/인쇄 타이틀 포함)
+    function updateUI() {
+      const titleStr = `${currentYear}년 ${currentMonth}월 특수교육대상자 통학비 정산서`;
+      document.getElementById('tableTitleMonth').textContent = `${currentYear}년 ${currentMonth}월 통학비 정산 명부`;
+      document.getElementById('printTitle').textContent = titleStr;
+
+      renderTable();
+      calculateTotals();
+    }
+
+    // 당월 데이터 초기화 모달 열기
+    function resetCurrentMonthData() {
+      const modal = document.getElementById('resetModal');
+      const desc = document.getElementById('resetModalDesc');
+      desc.textContent = `${currentYear}년 ${currentMonth}월 정산 데이터를 초기 상태로 리셋하시겠습니까?`;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeResetModal() {
+      const modal = document.getElementById('resetModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function confirmResetMonthData() {
+      localStorage.removeItem(getStorageKey(currentYear, currentMonth));
+      loadMonthData();
+      closeResetModal();
+      showToast('데이터가 초기화되었습니다.');
+    }
+
+    // 엑셀(CSV) 내보내기 (한글 깨짐 없는 BOM UTF-8 적용)
+    function exportToCSV() {
+      let csvContent = "\uFEFF"; // UTF-8 BOM
+      csvContent += `"${currentYear}년 ${currentMonth}월 특수교육대상자 통학비 정산 내역"\n`;
+      csvContent += `"작성일자: ${new Date().toLocaleDateString('ko-KR')}"\n\n`;
+
+      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
+      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
+
+      // 헤더
+      const headers = ["연번", "학생명", "학반", "보호자동행여부", "등교일수", "학생통학비", "보호자통학비", "개별합계액"];
+      csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
+
+      // 본문
+      currentStudents.forEach((st, idx) => {
+        const sTotal = (st.days || 0) * defS * 2;
+        const pTotal = st.hasParent ? ((st.days || 0) * defP * 4) : 0;
+        const total = sTotal + pTotal;
+
+        const row = [
+          idx + 1,
+          st.name || "",
+          st.grade || "",
+          st.hasParent ? "동행" : "미동행",
+          st.days || 0,
+          sTotal,
+          pTotal,
+          total
+        ];
+        csvContent += row.map(val => `"${val}"`).join(",") + "\n";
+      });
+
+      // 합계행 계산
+      const totalS = currentStudents.reduce((sum, s) => sum + ((s.days || 0) * defS * 2), 0);
+      const totalP = currentStudents.reduce((sum, s) => sum + (s.hasParent ? ((s.days || 0) * defP * 4) : 0), 0);
+      const totalAll = totalS + totalP;
+
+      csvContent += `"합계","","","","","${totalS}","${totalP}","${totalAll}"\n`;
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${currentYear}년_${currentMonth}월_특수교육대상자_통학비_정산.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('엑셀(CSV) 파일이 다운로드되었습니다.');
+    }
+
+    // 알림 토스트 UI 함수
+    function showToast(text) {
+      const toast = document.getElementById('toastMessage');
+      const toastText = document.getElementById('toastText');
+      toastText.textContent = text;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+
+    // 오늘 날짜 표기
+    function updatePrintDate() {
+      const dateElem = document.getElementById('printDate');
+      if (dateElem) {
+        dateElem.textContent = new Date().toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+    }
+
+    // HTML 태그 탈출 유틸
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
