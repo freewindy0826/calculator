@@ -110,15 +110,15 @@
           </div>
         </div>
 
-        <!-- 학생 & 보호자 기본 1일 단가 (항상 한 줄에 나란히 배치) -->
-        <div class="lg:col-span-6 grid grid-cols-2 gap-3 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
+        <!-- 학생 & 보호자 기본 1일 단가 (항상 한 줄에 나란히 배치 및 입력 즉시 자동 반영) -->
+        <div class="lg:col-span-9 grid grid-cols-2 gap-3 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
           <div>
             <label class="block text-xs font-bold text-teal-800 mb-1 flex items-center gap-1">
               <i data-lucide="graduation-cap" class="w-3.5 h-3.5 text-teal-600"></i>
               <span>학생 기본 1일 단가</span>
             </label>
             <div class="relative">
-              <input type="number" id="defaultStudentFare" value="1500" min="0" step="50" onchange="updateDefaultFares()"
+              <input type="number" id="defaultStudentFare" value="1500" min="0" step="50" oninput="updateDefaultFares()"
                      class="w-full px-3 py-1.5 pr-7 border border-teal-300 rounded-lg text-sm font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
               <span class="absolute right-2.5 top-2 text-xs text-slate-400">원</span>
             </div>
@@ -130,19 +130,11 @@
               <span>보호자 기본 1일 단가</span>
             </label>
             <div class="relative">
-              <input type="number" id="defaultParentFare" value="1500" min="0" step="50" onchange="updateDefaultFares()"
+              <input type="number" id="defaultParentFare" value="1500" min="0" step="50" oninput="updateDefaultFares()"
                      class="w-full px-3 py-1.5 pr-7 border border-purple-300 rounded-lg text-sm font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500">
               <span class="absolute right-2.5 top-2 text-xs text-slate-400">원</span>
             </div>
           </div>
-        </div>
-
-        <!-- 전체 일괄 적용 버튼 -->
-        <div class="lg:col-span-3">
-          <button onclick="applyDefaultsToAll()" class="w-full py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition flex items-center justify-center gap-1.5 shadow-sm">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-600"></i>
-            <span>모든 학생에게 기본단가 적용</span>
-          </button>
         </div>
       </div>
     </div>
@@ -394,7 +386,7 @@
       localStorage.setItem(key, JSON.stringify(dataToSave));
     }
 
-    // 기본 단가 변경 반영
+    // 기본 단가 변경 즉시 모든 학생에게 자동 반영
     function updateDefaultFares() {
       const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
       const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
@@ -405,23 +397,6 @@
       renderTable();
       calculateTotals();
       saveMonthData();
-      showToast('공통 1일 기준 단가가 반영되었습니다.');
-    }
-
-    // 기본 단가를 모든 학생에게 재적용
-    function applyDefaultsToAll() {
-      const defS = parseInt(document.getElementById('defaultStudentFare').value) || 0;
-      const defP = parseInt(document.getElementById('defaultParentFare').value) || 0;
-
-      currentStudents.forEach(st => {
-        st.sFare = defS;
-        st.pFare = defP;
-      });
-
-      renderTable();
-      calculateTotals();
-      saveMonthData();
-      showToast('모든 학생에게 공통 단가가 적용되었습니다.');
     }
 
     // 학생 새 행 추가
