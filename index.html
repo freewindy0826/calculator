@@ -295,14 +295,14 @@
         <h3 class="text-base font-bold text-slate-900">당월 데이터 초기화</h3>
       </div>
       <p id="resetModalDesc" class="text-xs text-slate-600 leading-relaxed">
-        선택된 월의 정산 명단 데이터를 초기 예시 상태로 리셋하시겠습니까?
+        선택된 월의 모든 학생 데이터를 완전히 삭제하시겠습니까?
       </p>
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeResetModal()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">
           취소
         </button>
         <button onclick="confirmResetMonthData()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
-          초기화 실행
+          전체 삭제
         </button>
       </div>
     </div>
@@ -313,13 +313,6 @@
     const now = new Date();
     let currentYear = now.getFullYear();
     let currentMonth = now.getMonth() + 1;
-
-    // 기본 초기 데이터셋 (신규 월 진입 시 제공되는 예시)
-    const initialSampleStudents = [
-      { id: 1, name: "김하늘", grade: "초 2-1", hasParent: true, days: 20, sFare: 1500, pFare: 1500 },
-      { id: 2, name: "이지호", grade: "초 4-2", hasParent: false, days: 19, sFare: 1500, pFare: 1500 },
-      { id: 3, name: "박민수", grade: "초 6-1", hasParent: true, days: 21, sFare: 1500, pFare: 1500 }
-    ];
 
     let currentStudents = [];
 
@@ -380,18 +373,11 @@
           if (parsed.defaultSFare) document.getElementById('defaultStudentFare').value = parsed.defaultSFare;
           if (parsed.defaultPFare) document.getElementById('defaultParentFare').value = parsed.defaultPFare;
         } catch (e) {
-          currentStudents = JSON.parse(JSON.stringify(initialSampleStudents));
+          currentStudents = [];
         }
       } else {
-        // 데이터가 없는 월이면 기본 샘플 복사
-        currentStudents = JSON.parse(JSON.stringify(initialSampleStudents));
-        // 기본단가 동기화
-        const defS = parseInt(document.getElementById('defaultStudentFare').value) || 1500;
-        const defP = parseInt(document.getElementById('defaultParentFare').value) || 1500;
-        currentStudents.forEach(s => {
-          s.sFare = defS;
-          s.pFare = defP;
-        });
+        // 저장된 데이터가 없는 월이면 빈 목록으로 시작
+        currentStudents = [];
       }
 
       updateUI();
@@ -448,8 +434,8 @@
         id: newId,
         name: "",
         grade: "",
-        hasParent: true,
-        days: 20,
+        hasParent: false,
+        days: "",
         sFare: defS,
         pFare: defP
       });
@@ -554,7 +540,7 @@
                    class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
           </td>
           <td class="py-2 px-2 text-center">
-            <input type="number" min="0" max="31" value="${st.days}"
+            <input type="number" min="0" max="31" value="${st.days !== undefined && st.days !== null ? st.days : ''}" placeholder="일수"
                    oninput="onFieldChange(${idx}, 'days', this.value)"
                    class="w-16 px-2 py-1 text-center font-bold border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded bg-slate-50 focus:bg-white text-xs focus:outline-none">
           </td>
@@ -626,7 +612,7 @@
     function resetCurrentMonthData() {
       const modal = document.getElementById('resetModal');
       const desc = document.getElementById('resetModalDesc');
-      desc.textContent = `${currentYear}년 ${currentMonth}월 정산 데이터를 초기 상태로 리셋하시겠습니까?`;
+      desc.textContent = `${currentYear}년 ${currentMonth}월의 등록된 모든 학생 데이터를 삭제하시겠습니까?`;
       modal.classList.remove('hidden');
       modal.classList.add('flex');
     }
@@ -638,10 +624,11 @@
     }
 
     function confirmResetMonthData() {
-      localStorage.removeItem(getStorageKey(currentYear, currentMonth));
-      loadMonthData();
+      currentStudents = [];
+      saveMonthData();
+      updateUI();
       closeResetModal();
-      showToast('데이터가 초기화되었습니다.');
+      showToast('당월 학생 명단이 모두 삭제되었습니다.');
     }
 
     // 엑셀(CSV) 내보내기 (한글 깨짐 없는 BOM UTF-8 적용)
